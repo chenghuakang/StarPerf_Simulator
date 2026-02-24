@@ -50,14 +50,49 @@ def mbb_antenna(OBJs, oi, data_ext_dict, data_ext_prev_dict, t, dT,
     else :
         # plug in has no impact on satellite objects
         return None
+
     
-    delay_data = data_ext_dict.get("delay", None).copy()
-    angle_data = data_ext_dict.get("angle", None).copy()
-    delay_data_prev = data_ext_prev_dict.get("delay")
-    angle_data_prev = data_ext_prev_dict.get("angle")
-    if delay_data_prev is None:
+    # Only apply to user / ground station
+    if type not in ("gs", "user"):
+        return None
+
+    obj = OBJs[oi]
+    antenna_count = int(getattr(obj, "antenna_count", 0))
+
+    # If no antennas, drop all links (or return None: choose what your framework expects)
+    if antenna_count <= 0:
+        # If you prefer "no change" instead, replace with: return None
+        delay = data_ext_dict.get("delay")
+        if isinstance(delay, np.ndarray) and delay.ndim == 2:
+            out = delay[oi, :].copy()
+            out[:] = 0
+            return out
+        return None
+
+    delay_raw = data_ext_dict.get("delay")
+    angle_raw = data_ext_dict.get("angle")
+
+    if not isinstance(delay_raw, np.ndarray) or delay_raw.ndim != 2:
+        return None  # cannot operate
+    if not isinstance(angle_raw, np.ndarray) or angle_raw.ndim != 2:
+        return None  # cannot operate
+
+    # Work on copies so inputs are never mutated
+    delay_data = delay_raw.copy()
+    angle_data = angle_raw.copy()
+
+    # Previous snapshot (copy as well to avoid any chance of shared-memory surprises)
+    delay_prev_raw = data_ext_prev_dict.get("delay")
+    angle_prev_raw = data_ext_prev_dict.get("angle")
+
+    if isinstance(delay_prev_raw, np.ndarray) and delay_prev_raw.shape == delay_data.shape:
+        delay_data_prev = delay_prev_raw.copy()
+    else:
         delay_data_prev = delay_data.copy()
-    if angle_data_prev is None:
+
+    if isinstance(angle_prev_raw, np.ndarray) and angle_prev_raw.shape == angle_data.shape:
+        angle_data_prev = angle_prev_raw.copy()
+    else:
         angle_data_prev = angle_data.copy()
 
     # retain policy with antenna_count-1

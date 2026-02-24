@@ -273,7 +273,8 @@ def main():
                 "links-add": delta["links-add"],
                 # "run": {...}  # keep empty unless you want to inject commands
             }
-
+            if not epoch_obj["links-del"] and not epoch_obj["links-add"] and not epoch_obj["links-update"]:
+                continue
             out_path = os.path.join(args.outdir+"/"+constellation_name+"/epochs", f"NetSatBench-epoch{ts}.json")
             with open(out_path, "w", encoding="utf-8") as w:
                 json.dump(epoch_obj, w, indent=2)

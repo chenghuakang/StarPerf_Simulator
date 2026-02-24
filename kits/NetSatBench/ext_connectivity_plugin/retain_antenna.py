@@ -27,45 +27,78 @@ def retain_antenna(OBJs, oi, data_ext_dict, data_ext_prev_dict, t, dT,
     """
 
 
-    if type in ["gs", "user"]:
-        longitude = OBJs[oi].longitude # the longitude of USER
-        latitude = OBJs[oi].latitude # the latitude of USER
-        frequency = OBJs[oi].frequency # the frequency of User, such as Ka,E and so on
-        antenna_count = OBJs[oi].antenna_count # the number of antenna of USER
-        uplink_GHz = OBJs[oi].uplink_GHz # the uplink GHz of USER
-        downlink_GHz = OBJs[oi].downlink_GHz # the downlink GHz of USER
-    else :
-        # plug in has no impact on satellite objects
+    # Only apply to user / ground station
+    if type not in ("gs", "user"):
         return None
-    
-    delay_data = data_ext_dict.get("delay", None).copy()
-    angle_data = data_ext_dict.get("angle", None).copy()
-    delay_data_prev = data_ext_prev_dict.get("delay")
-    angle_data_prev = data_ext_prev_dict.get("angle")
-    if delay_data_prev is None:
+
+    obj = OBJs[oi]
+    antenna_count = int(getattr(obj, "antenna_count", 0))
+
+    # If no antennas, drop all links (or return None: choose what your framework expects)
+    if antenna_count <= 0:
+        # If you prefer "no change" instead, replace with: return None
+        delay = data_ext_dict.get("delay")
+        if isinstance(delay, np.ndarray) and delay.ndim == 2:
+            out = delay[oi, :].copy()
+            out[:] = 0
+            return out
+        return None
+
+
+    delay_raw = data_ext_dict.get("delay")
+    angle_raw = data_ext_dict.get("angle")
+
+    if not isinstance(delay_raw, np.ndarray) or delay_raw.ndim != 2:
+        return None  # cannot operate
+    if not isinstance(angle_raw, np.ndarray) or angle_raw.ndim != 2:
+        return None  # cannot operate
+
+    # Work on copies so inputs are never mutated
+    delay_data = delay_raw.copy()
+    angle_data = angle_raw.copy()
+
+    # Previous snapshot (copy as well to avoid any chance of shared-memory surprises)
+    delay_prev_raw = data_ext_prev_dict.get("delay")
+    angle_prev_raw = data_ext_prev_dict.get("angle")
+
+    if isinstance(delay_prev_raw, np.ndarray) and delay_prev_raw.shape == delay_data.shape:
+        delay_data_prev = delay_prev_raw.copy()
+    else:
         delay_data_prev = delay_data.copy()
-    if angle_data_prev is None:
+
+    if isinstance(angle_prev_raw, np.ndarray) and angle_prev_raw.shape == angle_data.shape:
+        angle_data_prev = angle_prev_raw.copy()
+    else:
         angle_data_prev = angle_data.copy()
 
-
+    # --- Core logic  ---
     linked_sats = np.where(delay_data[oi, :] != 0)[0]
-    linked_sats_updated = np.array([]) # initialize the array of updated linked satellites
     linked_sats_prev = np.where(delay_data_prev[oi, :] != 0)[0]
-    link_sat_old = np.intersect1d(linked_sats, linked_sats_prev) # common links in previous and current snapshot
+
+    link_sat_old = np.intersect1d(linked_sats, linked_sats_prev)
     linked_sat_old_rising = link_sat_old[angle_data[oi, link_sat_old] > angle_data_prev[oi, link_sat_old]]
     linked_sat_old_rising = linked_sat_old_rising[np.argsort(angle_data[oi, linked_sat_old_rising])]
+
     linked_sat_old_setting = link_sat_old[angle_data[oi, link_sat_old] <= angle_data_prev[oi, link_sat_old]]
     linked_sat_old_setting = linked_sat_old_setting[np.argsort(-angle_data[oi, linked_sat_old_setting])]
-    linked_sat_new = np.setdiff1d(linked_sats, linked_sats_prev) # new links in the current snapshot
+
+    linked_sat_new = np.setdiff1d(linked_sats, linked_sats_prev)
     linked_sat_new_rising = linked_sat_new[angle_data[oi, linked_sat_new] > angle_data_prev[oi, linked_sat_new]]
     linked_sat_new_rising = linked_sat_new_rising[np.argsort(angle_data[oi, linked_sat_new_rising])]
+
     linked_sat_new_setting = linked_sat_new[angle_data[oi, linked_sat_new] <= angle_data_prev[oi, linked_sat_new]]
     linked_sat_new_setting = linked_sat_new_setting[np.argsort(-angle_data[oi, linked_sat_new_setting])]
-    linked_sats_sorted = np.concatenate((linked_sat_old_rising, linked_sat_old_setting, linked_sat_new_rising, linked_sat_new_setting))
+
+    linked_sats_sorted = np.concatenate(
+        (linked_sat_old_rising, linked_sat_old_setting, linked_sat_new_rising, linked_sat_new_setting)
+    )
+
     linked_sats_updated = linked_sats_sorted[:antenna_count]
-    
     linked_sat_to_delete = np.setdiff1d(linked_sats, linked_sats_updated)
+
     delay_data[oi, linked_sat_to_delete] = 0
+
+    # Return only the row (copy is already detached from original inputs)
     return delay_data[oi, :]
 
     

@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 
 # Append StarPerf root to path to safely import its modules without modifying them
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Import necessary functions from StarPerf's visualization module
 from visualization.constellation_visualization import get_satellites_list, add_coverage_circle , get_ISL

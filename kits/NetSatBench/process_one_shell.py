@@ -93,7 +93,7 @@ def process_one_shell(shell_name: Optional[str],
 
     NODEs = SATs + GSs + USERs  # combined list of all objects for plugin processing, ordered by satellite first then GS then USER as per extended matrix construction
 
-    for ts in timeslots:
+    for ts_index, ts in enumerate(timeslots):
         sat_pos = h5_pos_root[ts][:]        # (n_sat, 3) longitude, latitude, altitude
         isl_del = h5_del_root[ts][:,:]  # (n_sat+1, n_sat+1) #  first row/col left void by StarPerf
         # fix possible first void rw/col in isl_delay by StarPerf convention (if not already all zeros)
@@ -111,15 +111,15 @@ def process_one_shell(shell_name: Optional[str],
             pos_ext =  np.vstack([pos_ext, usr_pos_ecef])
 
         # Extended delay: copy sat-sat then fill sat-gs
-        del_ext = np.zeros((n_tot, n_tot), dtype="float64") # initialize with zeros (no links) and first row/col void as per StarPerf convention
+        del_ext = np.zeros((n_tot, n_tot), dtype="float64") # initialize with zeros (no links)
         del_ext[:n_sat, :n_sat] = isl_del
         
         # Extended rate and loss
-        rate_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store bit rate in Mbps and first row/col void as per StarPerf convention
-        loss_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store loss rate as float between 0 and 1 and first row/col void as per StarPerf convention
+        rate_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store bit rate in Mbps 
+        loss_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store loss rate as float between 0 and 1 
 
-        # Supporting anngles for potential use in connectivity plugins without redundant calculations
-        angle_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store elevation angle in degrees and first row/col void as per StarPerf convention
+        # Supporting angles for potential use in connectivity plugins without redundant calculations
+        angle_ext = np.zeros((n_tot, n_tot), dtype="float64")  # store elevation angle in degrees 
         # Add rate and loss for ISLs based on sat_conn_function if provided
         
         data_ext_dict = {"delay": del_ext, "rate": rate_ext, "loss": loss_ext, "pos": pos_ext, "angle": angle_ext}
@@ -195,6 +195,7 @@ def process_one_shell(shell_name: Optional[str],
                     t=ts, dT=dT, min_elevation_deg=min_elevation_deg, 
                     type="gs", metadata=gs_ext_conn_function.get("antenna_metadata", None))
                 if new_del_ext_values is not None:
+                    pass
                     del_ext[:, gidx] = new_del_ext_values.copy()  
                     del_ext[gidx, :] = new_del_ext_values.copy()
             
