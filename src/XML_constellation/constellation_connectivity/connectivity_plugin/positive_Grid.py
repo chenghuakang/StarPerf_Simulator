@@ -90,6 +90,9 @@ def positive_Grid(constellation , dT):
         # in the sh layer shell, the number of satellites contained in each orbit
         number_of_satellites_per_orbit = (int)(number_of_satellites_in_sh / number_of_orbits_in_sh)
 
+        # extract number of computed timestamps
+        number_of_timestamps = sh.orbits[0].satellites[0].longitude.__len__()
+
         # calculate distance and delay from one satellite to other satellites
         # traverse each orbit layer by layer, orbit_index starts from 1
         for orbit_index in range(1,number_of_orbits_in_sh+1 , 1):
@@ -112,7 +115,7 @@ def positive_Grid(constellation , dT):
                 isl_cur_up_distance = [] # the distance attribute of the isl_cur_up object
                 isl_cur_up_delay = [] # delay attribute of isl_cur_up object
 
-                for t in range(1, (int)(sh.orbit_cycle / dT) + 2, 1):
+                for t in range(1, number_of_timestamps + 1, 1):
                     # calculate the distance between the two satellites cur_satellite and up_satellite
                     distance_cur_up = distance_two_satellites(cur_satellite , up_satellite , t)
                     isl_cur_up_distance.append(distance_cur_up)
@@ -140,7 +143,7 @@ def positive_Grid(constellation , dT):
                 isl_cur_right_distance = []  # the distance attribute of the isl_cur_right object
                 isl_cur_right_delay = []  # delay attribute of isl_cur_right object
                 # calculate the ISL delay and distance between satellites in each timeslot
-                for t in range(1, (int)(sh.orbit_cycle / dT) + 2, 1):
+                for t in range(1, number_of_timestamps + 1, 1):
                     # calculate the distance between the two satellites cur_satellite and right_satellite_id
                     distance_cur_right = distance_two_satellites(cur_satellite, right_satellite , t)
                     isl_cur_right_distance.append(distance_cur_right)
@@ -159,7 +162,7 @@ def positive_Grid(constellation , dT):
 
 
         # save the delay matrix of this layer shell (sh) at each time t to a file
-        for t in range(1, (int)(sh.orbit_cycle / dT) + 2, 1):
+        for t in range(1, number_of_timestamps + 1, 1):
             # establish a delay matrix of points between satellites to store the delay time between any two satellites.
             # the unit is seconds. The rows and columns with the subscript 0 are left empty. Data is stored starting
             # from row 1 and column 1.

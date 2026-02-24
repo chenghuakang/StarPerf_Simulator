@@ -22,7 +22,7 @@ import src.XML_constellation.constellation_entity.satellite as SATELLITE
 # Parameters:
 # sh : the shell class object of the orbit to be generated
 # dT : how often the position of the constellation satellite is updated.
-def orbit_configuration(sh , dT):
+def orbit_configuration(sh , dT, duration = None):
     a = 6371.0 + sh.altitude # satellite orbit semi-major axis, unit: kilometers
     inc = sh.inclination # orbital inclination, unit is °
     ecc = 0  # orbit eccentricity
@@ -78,7 +78,10 @@ def orbit_configuration(sh , dT):
             sat = EarthSatellite.from_satrec(satrec, ts)  # generate satellite object
             cycle = sh.orbit_cycle # orbital period of this shell (seconds)
             # a list containing timestamps within cycle seconds, generating a timestamp every dT seconds
-            t_ts = ts.utc(2023, 10, 1, 0, 0,range(0 , cycle , dT))
+            if duration is None:
+                t_ts = ts.utc(2023, 10, 1, 0, 0,range(0 , cycle , dT))
+            else:
+                t_ts = ts.utc(2023, 10, 1, 0, 0,range(0 , duration , dT))
             geocentric = sat.at(t_ts)
             satellite_position = pd.DataFrame()
             subpoint = wgs84.subpoint(geocentric)

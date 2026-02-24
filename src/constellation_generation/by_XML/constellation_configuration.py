@@ -43,7 +43,7 @@ def read_xml_file(file_path):
 # Parameters:
 # dT : the timeslot, and the timeslot t is calculated from 1
 # constellation_name : the name of the constellation to be generated, used to read the xml configuration file
-def constellation_configuration(dT , constellation_name):
+def constellation_configuration(dT , constellation_name, duration = None):
     # the path to the constellation configuration information file .xml file
     xml_file_path = "config/XML_constellation/" + constellation_name + ".xml"
     # read constellation configuration information
@@ -79,7 +79,7 @@ def constellation_configuration(dT , constellation_name):
                          number_of_orbits=number_of_orbit, inclination=inclination, orbit_cycle=orbit_cycle,
                          number_of_satellite_per_orbit=number_of_satellite_per_orbit, phase_shift=phase_shift, shell_name = shell_name)
         # the basic properties of the sh layer have been configured. Now the track of the sh layer is generated.
-        orbit_configuration.orbit_configuration(sh, dT)
+        orbit_configuration.orbit_configuration(sh = sh, dT = dT, duration=duration)
         # all orbits and satellites in the sh layer have been configured. Now set the number of each satellite.
         # the number starts from 1.
         # the total number of satellites contained in the sh layer shell
@@ -101,7 +101,10 @@ def constellation_configuration(dT , constellation_name):
         shells.append(sh)
         # write the longitude, latitude, altitude and other location information of all satellites in the current
         # shell layer sh into a file and save it
-        for tt in range(1 , (int)(sh.orbit_cycle / dT)+2 , 1):
+        
+        
+        number_of_timeslots = sh.orbits[0].satellites[0].longitude.__len__()
+        for tt in range(1 , number_of_timeslots + 1 , 1):
             # this list is used to store the position information of all satellites in the current shell. It is a
             # two-dimensional list. Each element is a one-dimensional list. Each one-dimensional list contains three
             # elements, which respectively represent the longitude, latitude and altitude of a satellite.

@@ -275,12 +275,15 @@ def create_exteded_h5(
                                   rate=rate, loss=loss, dT=dT, overwrite=overwrite)
 
 ## build SatarPerf constellation from XML configuration. Wrote position group in h5 file 
-def build_constellation_xml(constellation_name: str, dT: int):
+def build_constellation_xml(constellation_name: str, dT: int, duration: int = 15*60):
     from src.constellation_generation.by_XML import constellation_configuration
-    constellation = constellation_configuration.constellation_configuration(dT=dT,
+    constellation = constellation_configuration.constellation_configuration(duration=duration,
+                                                                            dT=dT,
                                                                             constellation_name=constellation_name)
     print('==============================================')
     print('\tDetails of the constellations are as follows :')
+    print('\t the duration of the simulation is ' , duration , ' seconds')
+    print('\t the timeslot interval is ' , dT , ' seconds')
     print('\tThe name of the constellation is : ' , constellation.constellation_name)
     print('\tThere are ' , constellation.number_of_shells , ' shell(s) in this constellation')
     print('\tThe information for each shell is as follows:')
@@ -343,6 +346,7 @@ def main():
                     help="Constellation type to build (default: xml). XML requires ./config/*_constellation/*.xml files; TLE requires config/TLE_constellation/*.txt files.")
     ap.add_argument("--constellation-name", default="OneWeb",
                     help="Must match subfolder name in ./config/*_constellation/ (default: OneWeb)")
+    ap.add_argument("--duration", type=int, default=15*60, help="Duration in seconds (default: 15 minutes)")
     ap.add_argument("--dT", type=int, default=15, 
                     help="Timeslot interval in seconds")
     ap.add_argument("--isl-connectivity-plugin", default="positive_Grid",
@@ -413,9 +417,10 @@ def main():
     
     # 1) Build constellation
     if args.mode == "xml":
-        constellation = build_constellation_xml(args.constellation_name, args.dT)
+        constellation = build_constellation_xml(args.constellation_name, args.dT, duration=args.duration)
         out_h5 = Path(args.data_root) / "XML_constellation" / f"{args.constellation_name}.h5"
-    else:
+    elif args.mode == "tle":
+        print(f"⚠️ Warning: TLE-based constellation generation is experimental and may not work with all constellations or plugins. Duratin is not supported. Use --mode xml for more consistent results.")
         constellation = build_constellation_tle(args.constellation_name, args.dT)
         out_h5 = Path(args.data_root) / "TLE_constellation" / f"{args.constellation_name}.h5"
 
