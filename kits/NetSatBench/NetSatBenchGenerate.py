@@ -30,8 +30,8 @@ import math
 import xml.etree.ElementTree as ET
 import sys
 # import from upper dir for constellation generation and connectivity plugins
-sys.path.append(str(Path(__file__).parent.parent))  # adjust as needed
-from NetSatBenchKit.process_one_shell import process_one_shell
+sys.path.append(str(Path(__file__).parent.parent.parent))  # adjust as needed
+from kits.NetSatBench.process_one_shell import process_one_shell
 import src.XML_constellation.constellation_entity.ground_station as GS
 import src.XML_constellation.constellation_entity.satellite as SAT
 import re
@@ -426,7 +426,7 @@ def main():
     # Ground station XML layout is described in the interface convention.
     if args.include_ground_stations:
         gs_xml = Path("config") / "ground_stations" / f"{args.constellation_name}.xml"
-        gs_conn_plugin_path_base = "NetSatBenchKit.ext_connectivity_plugin"
+        gs_conn_plugin_path_base = "kits.NetSatBench.ext_connectivity_plugin"
         gs_ext_conn_function = {}
         try:
             gs_list = read_ground_stations_xml(gs_xml)
@@ -458,7 +458,7 @@ def main():
     
     if args.include_users:
         usr_xml = Path("config") / "users" / f"{args.constellation_name}.xml"
-        usr_conn_plugin_path_base = "NetSatBenchKit.ext_connectivity_plugin"
+        usr_conn_plugin_path_base = "kits.NetSatBench.ext_connectivity_plugin"
         usr_ext_conn_function = {}
         try:
             usr_list = read_users_xml(usr_xml)
@@ -490,7 +490,7 @@ def main():
         usr_list = []
     
     # add extended conn plugin functions for ISL
-    sat_conn_plugin_path_base = "NetSatBenchKit.ext_connectivity_plugin"
+    sat_conn_plugin_path_base = "kits.NetSatBench.ext_connectivity_plugin"
     sat_ext_conn_function = {}
     try:
         sat_ext_plugin_rate = importlib.import_module(sat_conn_plugin_path_base + "." + args.isl_rate_plugin)
