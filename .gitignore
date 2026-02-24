@@ -7,4 +7,5 @@ __pycache__/
 .venv/
 uv.lock
 .DS_Store
-visualization/html_head_tail/head.html
+visualization/CesiumAPP/
+
