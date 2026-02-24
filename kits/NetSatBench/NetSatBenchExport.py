@@ -205,7 +205,7 @@ def main():
         constellation_name = info_group.attrs.get("constellation_name", "unknown_constellation")
         timeslot_names = sorted(del_shell.keys(), key=parse_timeslot_index)
         os.makedirs(args.outdir+"/"+constellation_name, exist_ok=True)
-        os.makedirs(args.outdir+"/"+constellation_name+"/constellation-epochs", exist_ok=True)
+        os.makedirs(args.outdir+"/"+constellation_name+"/epochs", exist_ok=True)
         
         # build node name mapping from type
         n_nodes = [-1, -1, -1]  # satellite, gateway, user
@@ -280,7 +280,7 @@ def main():
 
             prev_snap = curr_snap
 
-    print(f"💾 Wrote {len(timeslot_names)} epoch files to {args.outdir}/constellation-epochs")
+    print(f"💾 Wrote {len(timeslot_names)} epoch files to {args.outdir}/{constellation_name}/epochs")
 
 
 if __name__ == "__main__":
