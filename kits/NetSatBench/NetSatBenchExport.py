@@ -208,7 +208,7 @@ def main():
         os.makedirs(args.outdir+"/"+constellation_name+"/epochs", exist_ok=True)
         
         # build node name mapping from type
-        n_nodes = [-1, -1, -1]  # satellite, gateway, user
+        n_nodes = [0,0,0]  # satellite, gateway, user
         node_name = [""] * (len(type_shell))  # 1-based indexing
         for i, t in enumerate(type_shell):
             t_str = t.decode("utf-8")
@@ -217,7 +217,7 @@ def main():
                 node_name[i] = f"sat{n_nodes[0]}"
             elif t_str == "gs":
                 n_nodes[1] += 1
-                node_name[i] = f"gs{n_nodes[1]}"
+                node_name[i] = f"grd{n_nodes[1]}"
             elif t_str == "user":
                 n_nodes[2] += 1
                 node_name[i] = f"usr{n_nodes[2]}"
@@ -275,7 +275,7 @@ def main():
             }
             if not epoch_obj["links-del"] and not epoch_obj["links-add"] and not epoch_obj["links-update"]:
                 continue
-            out_path = os.path.join(args.outdir+"/"+constellation_name+"/epochs", f"NetSatBench-epoch{ts}.json")
+            out_path = os.path.join(args.outdir+"/"+constellation_name+"/epochs", f"NetSatBench-epoch{ts+1}.json")
             with open(out_path, "w", encoding="utf-8") as w:
                 json.dump(epoch_obj, w, indent=2)
 
