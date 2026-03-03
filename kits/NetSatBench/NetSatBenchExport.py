@@ -185,26 +185,33 @@ def main():
         for ts, v in info_group.attrs.items():
             print(f"    {ts}: {v}")
     
-        # ask to clean outdir if not empty
-        os.makedirs(args.outdir, exist_ok=True)
-        if os.listdir(args.outdir):
-            print(f"⚠️ Warning: output directory {args.outdir} is not empty.")
-            response = input("  Do you want to continue remove all files? (y/n): ")
-            if response.lower() == 'y':
-                #remove the whole directory and recreate it
-                #force remove the directory itself to ensure all files are deleted, then recreate it
-                shutil.rmtree(args.outdir)
-                print(f"  Emptied directory {args.outdir}.")
-                os.makedirs(args.outdir, exist_ok=True)
-        
-        
         # parse start time
         start_str = args.start_time_utc.replace("Z", "+00:00")
         t0 = datetime.fromisoformat(start_str).astimezone(timezone.utc)
         dT = float(info_group.attrs.get("dT", 1.0))  # default to 1 second if not specified
+        
+        # parse constellation name and timeslot names
         constellation_name = info_group.attrs.get("constellation_name", "unknown_constellation")
         timeslot_names = sorted(del_shell.keys(), key=parse_timeslot_index)
+
+        # ask to clean outdir if not empty
+        os.makedirs(args.outdir, exist_ok=True)
         os.makedirs(args.outdir+"/"+constellation_name, exist_ok=True)
+        
+        if os.listdir(args.outdir+"/"+constellation_name):
+            print(f"⚠️ Warning: output directory {args.outdir+"/"+constellation_name} is not empty.")
+            response = input("  Do you want to continue remove all files? (y/n): ")
+            if response.lower() == 'y':
+                #remove the whole directory and recreate it
+                #force remove the directory itself to ensure all files are deleted, then recreate it
+                shutil.rmtree(args.outdir+"/"+constellation_name)
+                print(f"  Emptied directory {args.outdir+"/"+constellation_name}.")
+                os.makedirs(args.outdir+"/"+constellation_name)
+            else:
+                print("  Aborting to avoid overwriting files.")
+                return
+        
+        # create epochs subdirectory
         os.makedirs(args.outdir+"/"+constellation_name+"/epochs", exist_ok=True)
         
         # build node name mapping from type
