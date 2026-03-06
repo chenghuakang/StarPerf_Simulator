@@ -19,7 +19,7 @@ def latilong_to_descartes(transformed_object):
     latitude = math.radians(transformed_object.latitude)
     fac1 = 1 - e2 * math.sin(latitude) * math.sin(latitude)
     N = a / math.sqrt(fac1)
-    # the unit of satellite height above the ground is meters
+    # the unit of height above the ground is meters but passed in km
     h = transformed_object.altitude * 1000
     X = (N + h) * math.cos(latitude) * math.cos(longitude)
     Y = (N + h) * math.cos(latitude) * math.sin(longitude)
@@ -70,7 +70,7 @@ def process_one_shell(shell_name: Optional[str],
         usr.altitude = 0.0  # Assuming USER altitude is 0 for simplicity; adjust if your XML includes altitude
         usr_pos[i,:] = (usr.longitude, usr.latitude, usr.altitude)  # fill in (lon, lat, alt)
         usr_pos_ecef[i,:] = latilong_to_descartes(usr)  # convert to (x,y,z) in ECEF
-
+   
     # Sort timeslots
     timeslots = sorted(
         h5_pos_root.keys(),
@@ -108,7 +108,7 @@ def process_one_shell(shell_name: Optional[str],
             pos_ext = sat_pos.astype("float64", copy=False)
         
         if n_usrs > 0:
-            pos_ext =  np.vstack([pos_ext, usr_pos_ecef])
+            pos_ext =  np.vstack([pos_ext, usr_pos])
 
         # Extended delay: copy sat-sat then fill sat-gs
         del_ext = np.zeros((n_tot, n_tot), dtype="float64") # initialize with zeros (no links)

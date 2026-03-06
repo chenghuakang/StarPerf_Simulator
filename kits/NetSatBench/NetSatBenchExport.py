@@ -176,6 +176,7 @@ def main():
         type_shell = f["type"][shell_name]["type"]
         loss_shell = f["loss"][shell_name]
         rate_shell = f["rate"][shell_name]
+        position_shell = f["position"][shell_name]
         info_group = f["info"]
         
         print(f"🛰️ Processing HDF5 file {args.h5} for shell {shell_name}.")
@@ -239,15 +240,29 @@ def main():
             sat_config_common["nodes"] = {}
             for i, nn in enumerate(node_name):
                 sat_config_common["nodes"][nn] = {}
-                sat_config_common["nodes"][nn]["name"] = nn
                 type_str = type_shell[i].decode("utf-8")
                 if type_str == "gs":
                     sat_config_common["nodes"][nn]["type"] = "gateway"
+                    sat_config_common["nodes"][nn]["metadata"] = {}
+                    sat_config_common["nodes"][nn]["metadata"]["location"] = {
+                        "longitude": float(position_shell[timeslot_names[0]][i][0]),
+                        "latitude": float(position_shell[timeslot_names[0]][i][1]),
+                        "altitude": float(position_shell[timeslot_names[0]][i][2])  
+                    }
                 elif type_str == "sat":
                     sat_config_common["nodes"][nn]["type"] = "satellite"
+                elif type_str == "user":
+                    sat_config_common["nodes"][nn]["type"] = "user"  # e.g., "user"
+                    sat_config_common["nodes"][nn]["metadata"] = {}
+                    sat_config_common["nodes"][nn]["metadata"]["location"] = {
+                        "longitude": float(position_shell[timeslot_names[0]][i][0]),
+                        "latitude": float(position_shell[timeslot_names[0]][i][1]),
+                        "altitude": float(position_shell[timeslot_names[0]][i][2])
+                    }
                 else:
                     sat_config_common["nodes"][nn]["type"] = type_str  # e.g., "user"
-                
+
+            # add metadata of user and gateways read from the HDF5 file     
             #find absolute path from args.outdir
             absolute_outdir_path = os.path.abspath(args.outdir)
             sat_config_common["epoch-config"] = {
@@ -256,8 +271,8 @@ def main():
             }
             with open(f"{absolute_outdir_path}/{constellation_name}/sat-config.json", "w", encoding="utf-8") as w:
                 json.dump(sat_config_common, w, indent=2)
-            print(f"💾 Wrote satellite configuration file to f'{absolute_outdir_path}/{constellation_name}/sat-config.json")
-        
+            print(f"💾 Wrote satellite configuration file to {absolute_outdir_path}/{constellation_name}/sat-config.json")
+        print(f"🏁 Start writing epoch files to {args.outdir}/{constellation_name}/epochs ...")
         prev_snap = None
         for ts, ts_name in enumerate(timeslot_names):
             delay_matrix = np.array(del_shell[ts_name])
