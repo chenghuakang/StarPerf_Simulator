@@ -58,7 +58,7 @@ def rounding_function(unit_str: str):
     except ValueError:
         raise ValueError(f"Invalid unit string: {unit_str}. Must be a positive number as a string (e.g., '1', '0.1', '0.01').")
 
-def build_snapshot_data(delay_matrix: np.ndarray, rate_matrix: np.ndarray, loss_matrix: np.ndarray, delay_round_str: str, rate_round_str: str, loss_round_str: str) -> Dict[Tuple[int, int], Dict[str, Any]]:
+def build_snapshot_data(delay_matrix: np.ndarray, rate_matrix: np.ndarray, loss_matrix: np.ndarray, position_matrix: np.ndarray, delay_round_str: str, rate_round_str: str, loss_round_str: str) -> Dict[Tuple[int, int], Dict[str, Any]]:
     """
     Build a snapshot dict: (i,j) -> attrs for all existing undirected links.
     Only consider i<j to avoid duplicates.
@@ -76,7 +76,11 @@ def build_snapshot_data(delay_matrix: np.ndarray, rate_matrix: np.ndarray, loss_
                 d = rounding_function(delay_round_str)(d)
                 r = rounding_function(rate_round_str)(r)
                 l = rounding_function(str(float(loss_round_str)/100))(l)
-                snap[(i, j)] = {"delay_ms": d, "rate_mbit": r, "loss": l}
+                long, lat, alt = position_matrix[i]  # you can choose to include position in the snapshot if needed for your use case
+                pos1_str = f"{long:.6f},{lat:.6f},{alt:.2f}"
+                long, lat, alt = position_matrix[j]
+                pos2_str = f"{long:.6f},{lat:.6f},{alt:.2f}"
+                snap[(i, j)] = {"delay_ms": d, "rate_mbit": r, "loss": l, "pos1": pos1_str, "pos2": pos2_str}
     return snap
 
 
@@ -100,6 +104,8 @@ def diff_snapshots(
             "rate": f"{curr[(i, j)]['rate_mbit']}mbit",
             "loss": f"{curr[(i, j)]['loss']}",
             "delay": f"{curr[(i, j)]['delay_ms']}ms",
+            "pos1": f"{curr[(i, j)]['pos1']}",
+            "pos2": f"{curr[(i, j)]['pos2']}"
         })
 
     links_del = []
@@ -278,8 +284,17 @@ def main():
             delay_matrix = np.array(del_shell[ts_name])
             rate_matrix = np.array(rate_shell[ts_name])
             loss_matrix = np.array(loss_shell[ts_name])
+            position_matrix = np.array(position_shell[ts_name])
 
-            curr_snap = build_snapshot_data(delay_matrix, rate_matrix, loss_matrix, args.delay_unit_ms, args.rate_unit_mbit, args.loss_unit_percent)
+            curr_snap = build_snapshot_data(
+                delay_matrix,
+                rate_matrix,
+                loss_matrix,
+                position_matrix,
+                args.delay_unit_ms,
+                args.rate_unit_mbit,
+                args.loss_unit_percent,
+            )
 
             if prev_snap is None:
                 # epoch0: treat everything as "add" (common for event logs)
