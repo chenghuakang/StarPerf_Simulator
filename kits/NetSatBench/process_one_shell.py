@@ -31,11 +31,12 @@ def judgePointToSatellite(sat_x , sat_y , sat_z , point_x , point_y , point_z , 
     A = 1.0 * point_x * (point_x - sat_x) + point_y * (point_y - sat_y) + point_z * (point_z - sat_z)
     B = 1.0 * math.sqrt(point_x * point_x + point_y * point_y + point_z * point_z)
     C = 1.0 * math.sqrt(math.pow(sat_x - point_x, 2) + math.pow(sat_y - point_y, 2) + math.pow(sat_z - point_z, 2))
-    angle = math.degrees(math.acos(A / (B * C))) # calculate angles and convert radians to degrees
+    angle = math.degrees(math.acos(A / (B * C))) # calculate angles and convert radians to degrees. This is the angle between the satellite and the point on the ground as seen from the center of the Earth
+    elevation_angle = angle - 90 # calculate elevation angle between satellite and point on the ground. 90 degrees means satellite is directly above the point, 0 degrees means satellite is on the horizon. We want elevation angle to be greater than minimum_elevation for a link to be possible
     if angle < 90 + minimum_elevation or math.fabs(angle - 90 - minimum_elevation) <= 1e-6:
-        return False, angle
+        return False, elevation_angle
     else:
-        return True, angle
+        return True, elevation_angle
 
 def process_one_shell(shell_name: Optional[str], 
                               GSs, 
@@ -167,11 +168,11 @@ def process_one_shell(shell_name: Optional[str],
                 transient_object.latitude = float(satp[1])
                 transient_object.altitude = float(satp[2])
                 spos_ecef = latilong_to_descartes(transient_object)  # get GS position in ECEF
-                elev_judge, angle = judgePointToSatellite(spos_ecef[0] , spos_ecef[1] , spos_ecef[2] ,
+                elev_judge, elevation_angle = judgePointToSatellite(spos_ecef[0] , spos_ecef[1] , spos_ecef[2] ,
                                                     gsp_ecef[0] , gsp_ecef[1] , gsp_ecef[2] ,
                                                     min_elevation_deg)
-                angle_ext[sidx, gidx] = angle
-                angle_ext[gidx, sidx] = angle
+                angle_ext[sidx, gidx] = elevation_angle
+                angle_ext[gidx, sidx] = elevation_angle
                 if elev_judge:
                     distance = math.sqrt(
                         (spos_ecef[0] - gsp_ecef[0]) ** 2
@@ -241,11 +242,11 @@ def process_one_shell(shell_name: Optional[str],
                 transient_object.latitude = float(satp[1])
                 transient_object.altitude = float(satp[2])
                 spos_ecef = latilong_to_descartes(transient_object)  # get GS position in ECEF
-                elev_judge, angle = judgePointToSatellite(spos_ecef[0] , spos_ecef[1] , spos_ecef[2] ,
+                elev_judge, elevation_angle = judgePointToSatellite(spos_ecef[0] , spos_ecef[1] , spos_ecef[2] ,
                                                     usp_ecef[0] , usp_ecef[1] , usp_ecef[2] ,
                                                     min_elevation_deg)
-                angle_ext[sidx, uidx] = angle
-                angle_ext[uidx, sidx] = angle
+                angle_ext[sidx, uidx] = elevation_angle
+                angle_ext[uidx, sidx] = elevation_angle
                 if elev_judge:
                     distance = math.sqrt(
                         (spos_ecef[0] - usp_ecef[0]) ** 2

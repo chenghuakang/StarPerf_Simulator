@@ -148,8 +148,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--h5", required=True, help="HDF5 file with delay, position, type, rate, and loss datasets (e.g., output of NetSatBenchGenerate.py)")
     ap.add_argument("--outdir", default="../../examples/StarPerf", help="Directory to write sat-config.json and epoch files (default: ../../examples/StarPerf/, write in ../../examples/StarPerf/<constellation_name>)")
-    ap.add_argument("--start-time-utc", default="2024-06-01T12:00:00Z",
-                    help="Epoch0 'time' field (ISO-8601, UTC, Z suffix recommended), default '2024-06-01T12:00:00Z'")
+    ap.add_argument("--start-time-utc", default="2023-10-01T00:00:00Z",
+                    help="Epoch0 'time' field (ISO-8601, UTC, Z suffix recommended), default '2023-10-01T00:00:00Z'")
     ap.add_argument("--delay-unit-ms",  default="1", help="Units of ms for rounding delay values in the output (e.g., default '1' for 1ms, '0.1' for 100us, 'microseconds' for 3 decimal places in ms)")
     ap.add_argument("--loss-unit-percent", default="1", help="Units of percent for rounding loss values in the output (e.g., default '1' for 1 percent, '0.1' for 0.1 percent)")
     ap.add_argument("--rate-unit-mbit", default="1", help="Units of Mbit for rounding rate values in the output (e.g., default '1' for 1 Mbit, '0.1' for 100 Kbit)")

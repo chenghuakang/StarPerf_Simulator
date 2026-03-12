@@ -20,6 +20,7 @@ Conventions:
 """
 
 import argparse
+import json
 from pathlib import Path
 import sys
 from unicodedata import name
@@ -451,6 +452,7 @@ def main():
             if args.gs_loss_plugin_metadata is not None:
                 with open(args.gs_loss_plugin_metadata, "r") as f:
                     pass
+            print(args.gs_antenna_plugin_metadata, args.gs_rate_plugin_metadata, args.gs_loss_plugin_metadata)
             gs_ext_conn_function["antenna_metadata"] = args.gs_antenna_plugin_metadata
             gs_ext_conn_function["rate_metadata"] = args.gs_rate_plugin_metadata
             gs_ext_conn_function["loss_metadata"] = args.gs_loss_plugin_metadata
@@ -562,15 +564,15 @@ def main():
         h5_info_root_ext.attrs["isl_connectivity_plugin"] = args.isl_connectivity_plugin
         h5_info_root_ext.attrs["isl_rate_plugin"] = args.isl_rate_plugin
         if args.isl_rate_plugin_metadata is not None:
-            h5_info_root_ext.attrs["isl_rate_plugin_metadata"] = args.isl_rate_plugin_metadata
+            h5_info_root_ext.attrs["isl_rate_plugin_metadata"] = json.loads(args.isl_rate_plugin_metadata)
         h5_info_root_ext.attrs["isl_loss_plugin"] = args.isl_loss_plugin
         if args.isl_loss_plugin_metadata is not None:
-            h5_info_root_ext.attrs["isl_loss_plugin_metadata"] = args.isl_loss_plugin_metadata
+            h5_info_root_ext.attrs["isl_loss_plugin_metadata"] = json.loads(args.isl_loss_plugin_metadata)
 
         if args.include_ground_stations:
             h5_info_root_ext.attrs["gs_antenna_plugin"] = args.gs_antenna_plugin
             if args.gs_antenna_plugin_metadata is not None:
-                h5_info_root_ext.attrs["gs_antenna_plugin_metadata"] = args.gs_antenna_plugin_metadata
+                h5_info_root_ext.attrs["gs_antenna_plugin_metadata"] = args.gs_antenna_plugin_me
             h5_info_root_ext.attrs["gs_rate_plugin"] = args.gs_rate_plugin
             if args.gs_rate_plugin_metadata is not None:
                 h5_info_root_ext.attrs["gs_rate_plugin_metadata"] = args.gs_rate_plugin_metadata
