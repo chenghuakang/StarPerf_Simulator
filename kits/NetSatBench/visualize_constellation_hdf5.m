@@ -72,34 +72,60 @@ if strlength(cacheFile) == 0
 end
 
 cacheHit = useCache && isfile(cacheFile);
+cacheMode = "rebuild";
 
 %% ------------------------------------------------------------------------
 % Read or load visualization inputs
 % -------------------------------------------------------------------------
 if cacheHit
     S = load(cacheFile);
-    constData = S.constData;
-    shellData = S.shellData;
-    altitude_km = S.altitude_km;
-    inclination_deg = S.inclination_deg;
-    phase_shift = S.phase_shift;
-    numPlanes = S.numPlanes;
-    satsPerPlane = S.satsPerPlane;
-    totalSatellites = S.totalSatellites;
-    sampleTime = S.sampleTime;
-    timeOfArrival = S.timeOfArrival;
-    latDeg = S.latDeg;
-    lonDeg = S.lonDeg;
-    altMeters = S.altMeters;
-    usrData = S.usrData;
-    gwData = S.gwData;
-    userSatPairs = S.userSatPairs;
-    gatewaySatPairs = S.gatewaySatPairs;
-    islPairs = S.islPairs;
-    userMinEl = S.userMinEl;
-    gatewayMinEl = S.gatewayMinEl;
-    fprintf('Loaded visualization cache from %s.\n', cacheFile);
-else
+    if hasCachedScenario(S, selectedShell, addUserAccess, addGatewayAccess, addISL, startTime, stopTime)
+        cacheMode = "scenario";
+        sc = S.sc;
+        sat = S.sat;
+        usrGS = S.usrGS;
+        gwGS = S.gwGS;
+        if isfield(S, 'islAccesses')
+            islAccesses = S.islAccesses; %#ok<NASGU>
+        end
+        if isfield(S, 'userAccesses')
+            userAccesses = S.userAccesses; %#ok<NASGU>
+        end
+        if isfield(S, 'gatewayAccesses')
+            gatewayAccesses = S.gatewayAccesses; %#ok<NASGU>
+        end
+        constData = S.constData;
+        shellData = S.shellData;
+        altitude_km = S.altitude_km;
+        inclination_deg = S.inclination_deg;
+        phase_shift = S.phase_shift;
+        numPlanes = S.numPlanes;
+        satsPerPlane = S.satsPerPlane;
+        totalSatellites = S.totalSatellites;
+        sampleTime = S.sampleTime;
+        timeOfArrival = S.timeOfArrival;
+        latDeg = S.latDeg;
+        lonDeg = S.lonDeg;
+        altMeters = S.altMeters;
+        usrData = S.usrData;
+        gwData = S.gwData;
+        userSatPairs = S.userSatPairs;
+        gatewaySatPairs = S.gatewaySatPairs;
+        islPairs = S.islPairs;
+        userMinEl = S.userMinEl;
+        gatewayMinEl = S.gatewayMinEl;
+        if isfield(S, 'effectiveStopTime')
+            stopTime = S.effectiveStopTime;
+        elseif isempty(stopTime)
+            stopTime = startTime + seconds(timeOfArrival(end));
+        end
+        fprintf('Loaded visualization scenario cache from %s.\n', cacheFile);
+    else
+        fprintf('Ignoring non-scenario visualization cache at %s and rebuilding it.\n', cacheFile);
+    end
+end
+
+if cacheMode == "rebuild"
     constData = readConstellationXml(constellationXmlFile);
 
     if selectedShell > constData.NumberOfShells
@@ -148,88 +174,93 @@ else
             hdf5File, selectedShell, totalSatellites, totalSatellites, numel(gwData));
     end
 
-    save(cacheFile, ...
-        'constData', 'shellData', ...
-        'altitude_km', 'inclination_deg', 'phase_shift', 'numPlanes', 'satsPerPlane', 'totalSatellites', ...
-        'sampleTime', 'timeOfArrival', 'latDeg', 'lonDeg', 'altMeters', ...
-        'usrData', 'gwData', 'userSatPairs', 'gatewaySatPairs', 'islPairs', ...
-        'userMinEl', 'gatewayMinEl');
-    fprintf('Saved visualization cache to %s.\n', cacheFile);
 end
 
 if isempty(stopTime)
     stopTime = startTime + seconds(timeOfArrival(end));
 end
 
+islAccesses = [];
+userAccesses = [];
+gatewayAccesses = [];
+
 %% ------------------------------------------------------------------------
 % Create scenario
 % -------------------------------------------------------------------------
-sc = satelliteScenario(startTime, stopTime, sampleTime);
+if cacheMode ~= "scenario"
+    sc = satelliteScenario(startTime, stopTime, sampleTime);
+end
 
 %% ------------------------------------------------------------------------
 % Create satellites from HDF5 trajectories
 % -------------------------------------------------------------------------
-sat = [];
-for satIdx = 1:totalSatellites
-    traj = geoTrajectory( ...
-        [latDeg(:, satIdx), lonDeg(:, satIdx), altMeters(:, satIdx)], ...
-        timeOfArrival);
-    sat = [sat; createTrajectoryObject(sc, traj, sprintf("Sat%d", satIdx))]; %#ok<AGROW>
-    fprintf('Created satellite %d with trajectory from HDF5.\n', satIdx);
-end
-
-try
-    for satIdx = 1:numel(sat)
-        sat(satIdx).MarkerSize = 4;
+if cacheMode ~= "scenario"
+    sat = [];
+    for satIdx = 1:totalSatellites
+        traj = geoTrajectory( ...
+            [latDeg(:, satIdx), lonDeg(:, satIdx), altMeters(:, satIdx)], ...
+            timeOfArrival);
+        sat = [sat; createTrajectoryObject(sc, traj, sprintf("Sat%d", satIdx))]; %#ok<AGROW>
+        fprintf('Created satellite %d with trajectory from HDF5.\n', satIdx);
     end
-catch
+
+    try
+        for satIdx = 1:numel(sat)
+            sat(satIdx).MarkerSize = 4;
+        end
+    catch
+    end
 end
 
 %% ------------------------------------------------------------------------
 % Add users as ground stations with constant elevation mask
 % -------------------------------------------------------------------------
-usrGS = [];
-if ~isempty(usrData)
-    usrLat  = [usrData.Latitude]';
-    usrLon  = [usrData.Longitude]';
-    usrName = string({usrData.Id})';
+if cacheMode ~= "scenario"
+    usrGS = [];
+    if ~isempty(usrData)
+        usrLat  = [usrData.Latitude]';
+        usrLon  = [usrData.Longitude]';
+        usrName = string({usrData.Id})';
 
-    [azU, elU] = constantElevationMask(userMinEl);
+        [azU, elU] = constantElevationMask(userMinEl);
 
-    usrGS = groundStation(sc, usrLat, usrLon, ...
-        Name=usrName, ...
-        MaskAzimuthEdges=azU, ...
-        MaskElevationAngle=elU);
-    
-    for k = 1:numel(usrGS)
-        usrGS(k).MarkerColor = [0 0.447 0.741];
+        usrGS = groundStation(sc, usrLat, usrLon, ...
+            Name=usrName, ...
+            MaskAzimuthEdges=azU, ...
+            MaskElevationAngle=elU);
+        
+        for k = 1:numel(usrGS)
+            usrGS(k).MarkerColor = [0 0.447 0.741];
+        end
+        
+        fprintf('Created %d users from XML.\n', numel(usrGS));
     end
-    
-    fprintf('Created %d users from XML.\n', numel(usrGS));
 end
 
 
 %% ------------------------------------------------------------------------
 % Add gateways as ground stations with constant elevation mask
 % -------------------------------------------------------------------------
-gwGS = [];
-if ~isempty(gwData)
-    gwLat  = [gwData.Latitude]';
-    gwLon  = [gwData.Longitude]';
-    gwName = string({gwData.Id})';
+if cacheMode ~= "scenario"
+    gwGS = [];
+    if ~isempty(gwData)
+        gwLat  = [gwData.Latitude]';
+        gwLon  = [gwData.Longitude]';
+        gwName = string({gwData.Id})';
 
-    [azG, elG] = constantElevationMask(gatewayMinEl);
+        [azG, elG] = constantElevationMask(gatewayMinEl);
 
-    gwGS = groundStation(sc, gwLat, gwLon, ...
-        Name=gwName, ...
-        MaskAzimuthEdges=azG, ...
-        MaskElevationAngle=elG);
+        gwGS = groundStation(sc, gwLat, gwLon, ...
+            Name=gwName, ...
+            MaskAzimuthEdges=azG, ...
+            MaskElevationAngle=elG);
 
-    for k = 1:numel(gwGS)
-        gwGS(k).MarkerColor = [0.850 0.325 0.098];
+        for k = 1:numel(gwGS)
+            gwGS(k).MarkerColor = [0.850 0.325 0.098];
+        end
+        
+        fprintf('Created %d gateways from XML.\n', numel(gwGS));
     end
-    
-    fprintf('Created %d gateways from XML.\n', numel(gwGS));
 end
 
 
@@ -237,8 +268,11 @@ end
 % Generate ISL topology from HDF5 delay matrices
 % -------------------------------------------------------------------------
 if addISL
-    for k = 1:size(islPairs,1)
-        access(sat(islPairs(k,1)), sat(islPairs(k,2)));
+    if cacheMode ~= "scenario"
+        islAccesses = [];
+        for k = 1:size(islPairs,1)
+            islAccesses = [islAccesses; access(sat(islPairs(k,1)), sat(islPairs(k,2)))]; %#ok<AGROW>
+        end
     end
     fprintf('Loaded %d ISL pairs from HDF5.\n', size(islPairs,1));
 end
@@ -247,12 +281,15 @@ end
 % Satellite-user access
 % -------------------------------------------------------------------------
 if addUserAccess && ~isempty(usrGS)
-    for u = 1:numel(usrGS)
-        satIndices = find(userSatPairs(:, u)).';
-        for satIdx = satIndices
-            access(sat(satIdx), usrGS(u));
+    if cacheMode ~= "scenario"
+        userAccesses = [];
+        for u = 1:numel(usrGS)
+            satIndices = find(userSatPairs(:, u)).';
+            for satIdx = satIndices
+                userAccesses = [userAccesses; access(sat(satIdx), usrGS(u))]; %#ok<AGROW>
+            end
+            fprintf('User %s linked to %d satellites from HDF5.\n', string({usrData(u).Id}), numel(satIndices));
         end
-        fprintf('User %s linked to %d satellites from HDF5.\n', string({usrData(u).Id}), numel(satIndices));
     end
     fprintf('Loaded HDF5-driven user-satellite link sets for %d users.\n', numel(usrGS));
 end
@@ -261,14 +298,44 @@ end
 % Satellite-gateway access
 % -------------------------------------------------------------------------
 if addGatewayAccess && ~isempty(gwGS)
-    for g = 1:numel(gwGS)
-        satIndices = find(gatewaySatPairs(:, g)).';
-        for satIdx = satIndices
-            access(sat(satIdx), gwGS(g));
+    if cacheMode ~= "scenario"
+        gatewayAccesses = [];
+        for g = 1:numel(gwGS)
+            satIndices = find(gatewaySatPairs(:, g)).';
+            for satIdx = satIndices
+                gatewayAccesses = [gatewayAccesses; access(sat(satIdx), gwGS(g))]; %#ok<AGROW>
+            end
+            fprintf('Gateway %s linked to %d satellites from HDF5.\n', string({gwData(g).Id}), numel(satIndices));
         end
-        fprintf('Gateway %s linked to %d satellites from HDF5.\n', string({gwData(g).Id}), numel(satIndices));
     end
     fprintf('Loaded HDF5-driven gateway-satellite link sets for %d gateways.\n', numel(gwGS));
+end
+
+if cacheMode ~= "scenario"
+    effectiveStopTime = stopTime;
+    cacheVersion = 2; %#ok<NASGU>
+    cacheConfig = struct( ...
+        'SelectedShell', selectedShell, ...
+        'AddUserAccess', addUserAccess, ...
+        'AddGatewayAccess', addGatewayAccess, ...
+        'AddISL', addISL, ...
+        'StartTime', startTime, ...
+        'StopTime', stopTime);
+
+    try
+        save(cacheFile, ...
+            'cacheVersion', 'cacheConfig', ...
+            'constData', 'shellData', ...
+            'altitude_km', 'inclination_deg', 'phase_shift', 'numPlanes', 'satsPerPlane', 'totalSatellites', ...
+            'sampleTime', 'timeOfArrival', 'latDeg', 'lonDeg', 'altMeters', ...
+            'usrData', 'gwData', 'userSatPairs', 'gatewaySatPairs', 'islPairs', ...
+            'userMinEl', 'gatewayMinEl', 'effectiveStopTime', ...
+            'sc', 'sat', 'usrGS', 'gwGS', ...
+            'islAccesses', 'userAccesses', 'gatewayAccesses');
+        fprintf('Saved full visualization scenario cache to %s.\n', cacheFile);
+    catch cacheErr
+        warning('Could not save full visualization scenario cache to %s: %s', cacheFile, cacheErr.message);
+    end
 end
 
 %% ------------------------------------------------------------------------
@@ -308,6 +375,45 @@ end
 function cacheFile = defaultCacheFile(hdf5File, selectedShell)
 [folder, baseName, ~] = fileparts(char(hdf5File));
 cacheFile = string(fullfile(folder, sprintf('%s_shell%d_vizcache.mat', baseName, selectedShell)));
+end
+
+function tf = hasCachedScenario(S, selectedShell, addUserAccess, addGatewayAccess, addISL, startTime, stopTime)
+requiredFields = { ...
+    'cacheVersion', 'cacheConfig', ...
+    'constData', 'shellData', ...
+    'altitude_km', 'inclination_deg', 'phase_shift', 'numPlanes', 'satsPerPlane', 'totalSatellites', ...
+    'sampleTime', 'timeOfArrival', 'latDeg', 'lonDeg', 'altMeters', ...
+    'usrData', 'gwData', 'userSatPairs', 'gatewaySatPairs', 'islPairs', ...
+    'userMinEl', 'gatewayMinEl', ...
+    'sc', 'sat', 'usrGS', 'gwGS'};
+tf = all(isfield(S, requiredFields));
+if ~tf
+    return;
+end
+
+cfg = S.cacheConfig;
+requiredMatch = ...
+    isfield(cfg, 'SelectedShell') && isequal(cfg.SelectedShell, selectedShell) && ...
+    isfield(cfg, 'AddUserAccess') && isequal(logical(cfg.AddUserAccess), logical(addUserAccess)) && ...
+    isfield(cfg, 'AddGatewayAccess') && isequal(logical(cfg.AddGatewayAccess), logical(addGatewayAccess)) && ...
+    isfield(cfg, 'AddISL') && isequal(logical(cfg.AddISL), logical(addISL))
+
+if ~requiredMatch
+    tf = false;
+    return;
+end
+
+if addISL && ~isfield(S, 'islAccesses')
+    tf = false;
+    return;
+end
+if addUserAccess && ~isfield(S, 'userAccesses')
+    tf = false;
+    return;
+end
+if addGatewayAccess && ~isfield(S, 'gatewayAccesses')
+    tf = false;
+end
 end
 
 function constData = readConstellationXml(xmlFile)
