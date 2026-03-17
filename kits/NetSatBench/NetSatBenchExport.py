@@ -147,7 +147,7 @@ def diff_snapshots(
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--h5", required=True, help="HDF5 file with delay, position, type, rate, and loss datasets (e.g., output of NetSatBenchGenerate.py)")
-    ap.add_argument("--outdir", default="../../examples/StarPerf", help="Directory to write sat-config.json and epoch files (default: ../../examples/StarPerf/, write in ../../examples/StarPerf/<constellation_name>)")
+    ap.add_argument("--outdir", default="examples/StarPerf", help="Directory of the main NEtSatBenchto write sat-config.json and epoch files (default: examples/StarPerf/, write in examples/StarPerf/<constellation_name>)")
     ap.add_argument("--start-time-utc", default="2023-10-01T00:00:00Z",
                     help="Epoch0 'time' field (ISO-8601, UTC, Z suffix recommended), default '2023-10-01T00:00:00Z'")
     ap.add_argument("--delay-unit-ms",  default="1", help="Units of ms for rounding delay values in the output (e.g., default '1' for 1ms, '0.1' for 100us, 'microseconds' for 3 decimal places in ms)")
@@ -202,24 +202,25 @@ def main():
         timeslot_names = sorted(del_shell.keys(), key=parse_timeslot_index)
 
         # ask to clean outdir if not empty
-        os.makedirs(args.outdir, exist_ok=True)
-        os.makedirs(args.outdir+"/"+constellation_name, exist_ok=True)
+
+        os.makedirs("../../" + args.outdir, exist_ok=True)
+        os.makedirs("../../" + args.outdir + "/" + constellation_name, exist_ok=True)
         
-        if os.listdir(args.outdir+"/"+constellation_name):
-            print(f"⚠️ Warning: output directory {args.outdir+"/"+constellation_name} is not empty.")
+        if os.listdir("../../" + args.outdir + "/" + constellation_name):
+            print(f"⚠️ Warning: output directory ../../{args.outdir}/{constellation_name} is not empty.")
             response = input("  Do you want to continue remove all files? (y/n): ")
             if response.lower() == 'y':
                 #remove the whole directory and recreate it
                 #force remove the directory itself to ensure all files are deleted, then recreate it
-                shutil.rmtree(args.outdir+"/"+constellation_name)
-                print(f"  Emptied directory {args.outdir+"/"+constellation_name}.")
-                os.makedirs(args.outdir+"/"+constellation_name)
+                shutil.rmtree("../../" + args.outdir + "/" + constellation_name)
+                print(f"  Emptied directory ../../{args.outdir}/{constellation_name}.")
+                os.makedirs("../../" + args.outdir + "/" + constellation_name)
             else:
                 print("  Aborting to avoid overwriting files.")
                 return
         
         # create epochs subdirectory
-        os.makedirs(args.outdir+"/"+constellation_name+"/epochs", exist_ok=True)
+        os.makedirs("../../" + args.outdir + "/" + constellation_name + "/epochs", exist_ok=True)
         
         # build node name mapping from type
         n_nodes = [0,0,0]  # satellite, gateway, user
@@ -269,15 +270,14 @@ def main():
                     sat_config_common["nodes"][nn]["type"] = type_str  # e.g., "user"
 
             # add metadata of user and gateways read from the HDF5 file     
-            #find absolute path from args.outdir
-            absolute_outdir_path = os.path.abspath(args.outdir)
+            
             sat_config_common["epoch-config"] = {
-                "epoch-dir": f"{absolute_outdir_path}/{constellation_name}/epochs",
+                "epoch-dir": f"{args.outdir}/{constellation_name}/epochs",
                 "file-pattern": "NetSatBench-epoch*.json"
             }
-            with open(f"{absolute_outdir_path}/{constellation_name}/sat-config.json", "w", encoding="utf-8") as w:
+            with open(f"../../"+args.outdir+"/"+constellation_name+"/sat-config.json", "w", encoding="utf-8") as w:
                 json.dump(sat_config_common, w, indent=2)
-            print(f"💾 Wrote satellite configuration file to {absolute_outdir_path}/{constellation_name}/sat-config.json")
+            print(f"💾 Wrote satellite configuration file to {args.outdir}/{constellation_name}/sat-config.json")
         print(f"🏁 Start writing epoch files to {args.outdir}/{constellation_name}/epochs ...")
         prev_snap = None
         for ts, ts_name in enumerate(timeslot_names):
@@ -312,7 +312,7 @@ def main():
             }
             if not epoch_obj["links-del"] and not epoch_obj["links-add"] and not epoch_obj["links-update"]:
                 continue
-            out_path = os.path.join(args.outdir+"/"+constellation_name+"/epochs", f"NetSatBench-epoch{ts+1}.json")
+            out_path = os.path.join("../../" + args.outdir + "/" + constellation_name + "/epochs", f"NetSatBench-epoch{ts+1}.json")
             with open(out_path, "w", encoding="utf-8") as w:
                 json.dump(epoch_obj, w, indent=2)
 
