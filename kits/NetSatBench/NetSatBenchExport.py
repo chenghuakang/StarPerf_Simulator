@@ -342,22 +342,20 @@ def main():
 
         os.makedirs("../../" + args.outdir, exist_ok=True)
         os.makedirs("../../" + args.outdir + "/" + constellation_name, exist_ok=True)
+        os.makedirs("../../" + args.outdir + "/" + constellation_name + "/epochs", exist_ok=True)
         
-        if os.listdir("../../" + args.outdir + "/" + constellation_name):
-            print(f"⚠️ Warning: output directory ../../{args.outdir}/{constellation_name} is not empty.")
-            response = input("  Do you want to continue remove all files? (y/n): ")
+        if os.listdir("../../" + args.outdir + "/" + constellation_name + "/epochs"):
+            print(f"⚠️ Warning: output directory ../../{args.outdir}/{constellation_name}/epochs is not empty.")
+            response = input("  Do you want to continue and remove all files? (y/n): ")
             if response.lower() == 'y':
                 #remove the whole directory and recreate it
                 #force remove the directory itself to ensure all files are deleted, then recreate it
-                shutil.rmtree("../../" + args.outdir + "/" + constellation_name)
-                print(f"  Emptied directory ../../{args.outdir}/{constellation_name}.")
-                os.makedirs("../../" + args.outdir + "/" + constellation_name)
+                shutil.rmtree("../../" + args.outdir + "/" + constellation_name+"/epochs")
+                print(f"  Emptied directory ../../{args.outdir}/{constellation_name}/epochs.")
+                os.makedirs("../../" + args.outdir + "/" + constellation_name + "/epochs", exist_ok=True)
             else:
                 print("  Aborting to avoid overwriting files.")
-                return
-        
-        # create epochs subdirectory
-        os.makedirs("../../" + args.outdir + "/" + constellation_name + "/epochs", exist_ok=True)
+                return      
         
         # build node name mapping from type
         n_nodes = [0,0,0]  # satellite, gateway, user
