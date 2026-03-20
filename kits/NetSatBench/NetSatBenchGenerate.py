@@ -78,7 +78,7 @@ def read_xml_file(file_path):
     return {root.tag: xml_to_dict(root)}
 
 ## Create GroundStation and User objects from XML
-def read_ground_stations_xml(gs_xml_path: Path) -> List[GS.GroundStation]:
+def read_ground_stations_xml(gs_xml_path: Path) -> List[GS.ground_station]:
     """
     Parse StarPerf ground station XML (config/ground_stations/<Constellation>.xml).
     Returns list of (lat_deg, lon_deg, alt_m, name).
