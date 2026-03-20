@@ -15,7 +15,8 @@ Conventions:
 - The delay datasets is a per-shell and per-timeslot square matrix where the value at [i,j] is the delay from node i to node j in seconds, or 0 if no link exists.
 - The rate datasets is a per-shell and per-timeslot square matrix where the value at [i,j] is the link rate in Mbps.
 - The loss datasets is a per-shell and per-timeslot square matrix where the value at [i,j] is the loss rate as a float between 0 and 1.
-- The type datasets is a per-shell vector where the value at [i] is a string indicating the node type ("sat", "gs", or "user").
+- The type datasets are per-shell tables where each row [i] contains: node type ("sat", "gs", or "user"),
+  shell id, orbit number, and satellite number in the orbit (for non-satellite nodes orbit/satellite indices are -1).
 - The info group contains attributes for metadata such as constellation name, generation timestamp, plugins used, and any other relevant information.
 """
 
@@ -176,6 +177,15 @@ def create_exteded_h5(
         # Detect layout: if /position contains timeslot datasets -> single-shell, else treat children as shells.
         def _is_timeslot_name(name: str) -> bool:
             return bool(re.match(r"^timeslot\d+$", name))
+        
+        def _sat_count_from_pos_group(pos_group) -> int:
+            ts_names = sorted(
+                [k for k in pos_group.keys() if _is_timeslot_name(k)],
+                key=lambda s: int("".join(ch for ch in s if ch.isdigit()) or "0"),
+            )
+            if not ts_names:
+                raise RuntimeError("No timeslot datasets found under /position.")
+            return int(pos_group[ts_names[0]].shape[0])
 
         pos_children = list(h5_pos_root.keys())
         single_shell = any(_is_timeslot_name(k) for k in pos_children)
@@ -217,8 +227,9 @@ def create_exteded_h5(
                                   h5_root_in=h5_root_in,
                                   h5_root_ext=h5_root_ext,
                                   gs_ext_conn_function=gs_ext_conn_function, usr_ext_conn_function=usr_ext_conn_function, sat_ext_conn_function=sat_ext_conn_function,
-                                  rate=rate, loss=loss, dT=dT, overwrite=overwrite)
+                                  rate=rate, loss=loss, dT=dT, overwrite=overwrite, sat_start_index=0)
         else:
+            sat_offset = 0
             for shell in sorted(h5_pos_root.keys()):
                 if shell not in h5_del_root:
                     raise RuntimeError(f"Shell '{shell}' exists under /position but not under /delay.")
@@ -273,7 +284,8 @@ def create_exteded_h5(
                                   min_elevation_deg=min_elevation_deg,
                                   h5_root_in=h5_root_in,h5_root_ext=h5_root_ext, 
                                   gs_ext_conn_function=gs_ext_conn_function, usr_ext_conn_function=usr_ext_conn_function, sat_ext_conn_function=sat_ext_conn_function,
-                                  rate=rate, loss=loss, dT=dT, overwrite=overwrite)
+                                  rate=rate, loss=loss, dT=dT, overwrite=overwrite, sat_start_index=sat_offset)
+                sat_offset += _sat_count_from_pos_group(h5_pos_shell)
 
 ## build SatarPerf constellation from XML configuration. Wrote position group in h5 file 
 def build_constellation_xml(constellation_name: str, dT: int, duration: int = 15*60):

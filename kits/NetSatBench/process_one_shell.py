@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 import math
 import sys
+import re
 # import from upper dir for constellation generation and connectivity plugins
 sys.path.append(str(Path(__file__).parent.parent))  # adjust as needed
 import src.XML_constellation.constellation_entity.satellite as SAT
@@ -44,7 +45,8 @@ def process_one_shell(shell_name: Optional[str],
                               SATs,
                               h5_root_in, h5_root_ext,
                               gs_ext_conn_function=None, usr_ext_conn_function=None, sat_ext_conn_function=None,
-                              min_elevation_deg=25, rate=None, loss=None, dT=15, overwrite=True):
+                              min_elevation_deg=25, rate=None, loss=None, dT=15, overwrite=True,
+                              sat_start_index: int = 0):
             
             
     # expand route dictionary
@@ -84,6 +86,12 @@ def process_one_shell(shell_name: Optional[str],
     first_pos = h5_pos_root[timeslots[0]][:]
     n_sat = int(first_pos.shape[0])
     n_tot = n_sat + n_gs + n_usrs
+    sat_nodes = SATs[sat_start_index:sat_start_index + n_sat]
+    if len(sat_nodes) != n_sat:
+        raise RuntimeError(
+            f"❌ SAT object list mismatch for {shell_name or 'single-shell'}: "
+            f"expected {n_sat} satellites, found {len(sat_nodes)} from SATs[{sat_start_index}:{sat_start_index + n_sat}]"
+        )
 
     # store previous timeslot's info for potential sat to ground connection policy (e.g. if you want to only connect GS to certain satellites based on ISL connectivity, you can use this info to avoid redundant elevation calculations)
     del_ext_previous = None
@@ -92,7 +100,7 @@ def process_one_shell(shell_name: Optional[str],
     loss_ext_previous = None
     angle_ext_previous = None
 
-    NODEs = SATs + GSs + USERs  # combined list of all objects for plugin processing, ordered by satellite first then GS then USER as per extended matrix construction
+    NODEs = sat_nodes + GSs + USERs  # combined list of all objects for plugin processing, ordered by satellite first then GS then USER as per extended matrix construction
 
     for ts_index, ts in enumerate(timeslots):
         sat_pos = h5_pos_root[ts][:]        # (n_sat, 3) longitude, latitude, altitude
@@ -347,12 +355,39 @@ def process_one_shell(shell_name: Optional[str],
         h5_rate_root_ext.create_dataset(ts, data=rate_ext, compression="gzip", compression_opts=4)
         h5_loss_root_ext.create_dataset(ts, data=loss_ext, compression="gzip", compression_opts=4)
         
-    # Write type dataset
-    type = np.array([b"undefined"] * n_tot, dtype='S')
-    for si in range(n_sat):
-        type[si] = b"sat"
+    # Write type dataset with metadata columns:
+    # - type: "sat", "gs", "user"
+    # - shell_id: shell numeric identifier (or 1 for single-shell)
+    # - orbit_n: orbit number in shell (sat only, else -1)
+    # - sat_num_in_orbit: satellite number inside orbit (sat only, else -1)
+    shell_id = 1
+    if shell_name:
+        m = re.search(r"(\d+)$", shell_name)
+        shell_id = int(m.group(1)) if m else -1
+
+    type_dtype = np.dtype([
+        ("type", "S16"),
+        ("shell_id", "i4"),
+        ("orbit_n", "i4"),
+        ("sat_num_in_orbit", "i4"),
+    ])
+    type_data = np.zeros(n_tot, dtype=type_dtype)
+    type_data["type"] = b"undefined"
+    type_data["shell_id"] = shell_id
+    type_data["orbit_n"] = -1
+    type_data["sat_num_in_orbit"] = -1
+
+    for si, sat_obj in enumerate(sat_nodes):
+        type_data["type"][si] = b"sat"
+        sat_id = getattr(sat_obj, "id", -1)
+        sat_per_orbit = len(getattr(getattr(sat_obj, "orbit", None), "satellites", []) or [])
+        if isinstance(sat_id, int) and sat_id > 0 and sat_per_orbit > 0:
+            type_data["orbit_n"][si] = ((sat_id - 1) // sat_per_orbit) + 1
+            type_data["sat_num_in_orbit"][si] = ((sat_id - 1) % sat_per_orbit) + 1
+
     for gi in range(n_gs):
-        type[n_sat + gi] = b"gs"
+        type_data["type"][n_sat + gi] = b"gs"
     for ui in range(n_usrs):
-        type[n_sat + n_gs + ui] = b"user"
-    h5_type_root_ext.create_dataset("type", data=type, compression="gzip", compression_opts=4)
+        type_data["type"][n_sat + n_gs + ui] = b"user"
+
+    h5_type_root_ext.create_dataset("type", data=type_data, compression="gzip", compression_opts=4)

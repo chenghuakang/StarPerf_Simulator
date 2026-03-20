@@ -10,6 +10,8 @@ import os
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Tuple, Any
+from pathlib import Path
+import xml.etree.ElementTree as ET
 import numpy as np
 import h5py
 import shutil
@@ -23,6 +25,100 @@ def parse_timeslot_index(name: str) -> int:
     if not m:
         raise ValueError(f"Unexpected timeslot dataset name: {name}")
     return int(m.group(1))
+
+
+def _coerce_scalar(value: Any) -> Any:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value
+    s = value.strip()
+    if s == "":
+        return ""
+    try:
+        if re.fullmatch(r"[+-]?\d+", s):
+            return int(s)
+        if re.fullmatch(r"[+-]?(\d+(\.\d*)?|\.\d+)", s):
+            return float(s)
+    except ValueError:
+        pass
+    return s
+
+
+def _to_str(value: Any) -> str:
+    if isinstance(value, (bytes, np.bytes_)):
+        return value.decode("utf-8")
+    return str(value)
+
+def _to_int(value: Any, default: int = -1) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _is_location_key(key: str) -> bool:
+    norm = key.lower().replace("_", "")
+    return norm in {"longitude", "latitude", "altitude"}
+
+
+def _find_config_file(subdir: str, constellation_name: str) -> Path:
+    candidates = [
+        Path("config") / subdir / f"{constellation_name}.xml",
+        Path(__file__).resolve().parents[2] / "config" / subdir / f"{constellation_name}.xml",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return candidates[0]
+
+
+def _load_ordered_node_metadata(xml_path: Path, container_tag: str, item_prefix: str) -> List[Dict[str, Any]]:
+    if not xml_path.exists():
+        return []
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    if root.tag == container_tag:
+        container = root
+    else:
+        container = root.find(container_tag)
+    if container is None:
+        return []
+
+    entries: List[Tuple[int, Dict[str, Any]]] = []
+    for child in container:
+        tag = child.tag or ""
+        if not tag.startswith(item_prefix):
+            continue
+        m = re.search(r"(\d+)$", tag)
+        idx = int(m.group(1)) if m else len(entries) + 1
+        payload: Dict[str, Any] = {}
+        for field in child:
+            key = field.tag
+            if _is_location_key(key):
+                continue
+            payload[key] = _coerce_scalar(field.text)
+        entries.append((idx, payload))
+
+    entries.sort(key=lambda x: x[0])
+    return [payload for _, payload in entries]
+
+
+def _load_constellation_shells_xml(xml_path: Path) -> Dict[str, Dict[str, Any]]:
+    if not xml_path.exists():
+        return {}
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+    out: Dict[str, Dict[str, Any]] = {}
+    for child in root:
+        tag = child.tag or ""
+        if not re.fullmatch(r"shell\d+", tag):
+            continue
+        fields: Dict[str, Any] = {}
+        for field in child:
+            fields[field.tag] = _coerce_scalar(field.text)
+        out[tag] = fields
+    return out
 
 
 
@@ -179,7 +275,34 @@ def main():
         # h5 data retrieval based on the specified shell (default "shell1")
         shell_name=args.shell
         del_shell = f["delay"][shell_name]
-        type_shell = f["type"][shell_name]["type"]
+        type_root = f["type"]
+        # Support both layouts:
+        # 1) /type/<shell>/type (group -> dataset)
+        # 2) /type/<shell> (dataset)
+        # 3) /type (single-shell dataset)
+        type_obj = type_root[shell_name] if shell_name in type_root else type_root
+        if isinstance(type_obj, h5py.Group):
+            if "type" not in type_obj:
+                raise KeyError(f"HDF5 'type' group for shell '{shell_name}' has no 'type' dataset.")
+            type_ds = type_obj["type"]
+        else:
+            type_ds = type_obj
+
+        if type_ds.dtype.fields and "type" in type_ds.dtype.fields:
+            type_shell = type_ds["type"]
+        else:
+            type_shell = type_ds[:]
+
+        sat_orbit_by_index = np.full(len(type_shell), -1, dtype=np.int64)
+        sat_num_in_orbit_by_index = np.full(len(type_shell), -1, dtype=np.int64)
+        if type_ds.dtype.fields:
+            type_fields = set(type_ds.dtype.fields.keys())
+            if "sat_orbit" in type_fields:
+                sat_orbit_by_index = type_ds["sat_orbit"][:]
+            elif "orbit_n" in type_fields:
+                sat_orbit_by_index = type_ds["orbit_n"][:]
+            if "sat_num_in_orbit" in type_fields:
+                sat_num_in_orbit_by_index = type_ds["sat_num_in_orbit"][:]
         loss_shell = f["loss"][shell_name]
         rate_shell = f["rate"][shell_name]
         position_shell = f["position"][shell_name]
@@ -197,8 +320,22 @@ def main():
         t0 = datetime.fromisoformat(start_str).astimezone(timezone.utc)
         dT = float(info_group.attrs.get("dT", 1.0))  # default to 1 second if not specified
         
-        # parse constellation name and timeslot names
+        # parse constellation name and load XML metadata
         constellation_name = info_group.attrs.get("constellation_name", "unknown_constellation")
+        if isinstance(constellation_name, (bytes, np.bytes_)):
+            constellation_name = constellation_name.decode("utf-8")
+        constellation_xml_path = _find_config_file("XML_constellation", constellation_name)
+        users_xml_path = _find_config_file("users", constellation_name)
+        gs_xml_path = _find_config_file("ground_stations", constellation_name)
+        constellation_shells_xml = _load_constellation_shells_xml(constellation_xml_path)
+        user_xml_meta = _load_ordered_node_metadata(users_xml_path, "USRs", "USR")
+        gs_xml_meta = _load_ordered_node_metadata(gs_xml_path, "GSs", "GS")
+        print(f"  Loaded constellation XML: {constellation_xml_path}")
+        print(f"  Loaded users XML: {users_xml_path} ({len(user_xml_meta)} entries)")
+        print(f"  Loaded ground stations XML: {gs_xml_path} ({len(gs_xml_meta)} entries)")
+        if shell_name not in constellation_shells_xml:
+            print(f"  ⚠️ Shell {shell_name} not found in constellation XML metadata; satellite shell metadata will be empty.")
+
         timeslot_names = sorted(del_shell.keys(), key=parse_timeslot_index)
 
         # ask to clean outdir if not empty
@@ -226,7 +363,7 @@ def main():
         n_nodes = [0,0,0]  # satellite, gateway, user
         node_name = [""] * (len(type_shell))  # 1-based indexing
         for i, t in enumerate(type_shell):
-            t_str = t.decode("utf-8")
+            t_str = _to_str(t)
             if t_str == "sat":
                 n_nodes[0] += 1
                 node_name[i] = f"sat{n_nodes[0]}"
@@ -245,9 +382,11 @@ def main():
             if "nodes" in sat_config_common:
                 del sat_config_common["nodes"]
             sat_config_common["nodes"] = {}
+            gs_seen = 0
+            user_seen = 0
             for i, nn in enumerate(node_name):
                 sat_config_common["nodes"][nn] = {}
-                type_str = type_shell[i].decode("utf-8")
+                type_str = _to_str(type_shell[i])
                 if type_str == "gs":
                     sat_config_common["nodes"][nn]["type"] = "gateway"
                     sat_config_common["nodes"][nn]["metadata"] = {}
@@ -256,8 +395,22 @@ def main():
                         "latitude": float(position_shell[timeslot_names[0]][i][1]),
                         "altitude": float(position_shell[timeslot_names[0]][i][2])  
                     }
+                    if gs_seen < len(gs_xml_meta):
+                        # Ordering: grd1 <- GS1, grd2 <- GS2, ...
+                        sat_config_common["nodes"][nn]["metadata"].update(gs_xml_meta[gs_seen])
+                    gs_seen += 1
                 elif type_str == "sat":
                     sat_config_common["nodes"][nn]["type"] = "satellite"
+                    sat_config = {
+                        "sat_orbit": _to_int(sat_orbit_by_index[i], -1),
+                        "sat_num_in_orbit": _to_int(sat_num_in_orbit_by_index[i], -1),
+                    }
+                    sat_config_common["nodes"][nn]["metadata"] = {
+                        "sat_config": sat_config
+                    }
+                    if shell_name in constellation_shells_xml:
+                        sat_config_common["nodes"][nn]["metadata"]["shell"] = shell_name
+                        sat_config_common["nodes"][nn]["metadata"]["shell_config"] = constellation_shells_xml[shell_name]
                 elif type_str == "user":
                     sat_config_common["nodes"][nn]["type"] = "user"  # e.g., "user"
                     sat_config_common["nodes"][nn]["metadata"] = {}
@@ -266,6 +419,10 @@ def main():
                         "latitude": float(position_shell[timeslot_names[0]][i][1]),
                         "altitude": float(position_shell[timeslot_names[0]][i][2])
                     }
+                    if user_seen < len(user_xml_meta):
+                        # Ordering: usr1 <- USR1, usr2 <- USR2, ...
+                        sat_config_common["nodes"][nn]["metadata"].update(user_xml_meta[user_seen])
+                    user_seen += 1
                 else:
                     sat_config_common["nodes"][nn]["type"] = type_str  # e.g., "user"
 
