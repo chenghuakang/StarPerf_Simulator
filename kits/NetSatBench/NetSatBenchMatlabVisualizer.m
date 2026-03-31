@@ -1,5 +1,5 @@
-function visualize_constellation_hdf5(constellationXmlFile, hdf5File, userXmlFile, gatewayXmlFile, varargin)
-%VISYALIZE_CONSTELLATION_HDF5
+function NetSatBenchMatlabVisualizer(constellationXmlFile, hdf5File, userXmlFile, gatewayXmlFile, varargin)
+%NETSATBENCHMATLABVISUALIZER
 %
 % Visualize one selected shell from the generated HDF5 positions so that
 % satellite ordering matches the Python StarPerf generation order.
