@@ -27,7 +27,8 @@ def slant_rate(OBJs, oi, data_ext_dict, data_ext_prev_dict, t, dT,
         distance_km = delay_data[oi, i] * 3e5 # distance in km (assuming speed of light in km/s)
         elevation_angle_deg = elevation_angle_data[oi, i]
         FSPL_factor = (zenith_altitude / distance_km)**2
-        relative_air_mass = 1/np.sin(np.radians(elevation_angle_deg)) # relative air mass based on elevation angle with respect to zenith
+        relative_air_mass = 1.0 * distance_km / zenith_altitude
+        #relative_air_mass = 1/np.sin(np.radians(elevation_angle_deg)) # relative air mass based on elevation angle with respect to zenith
         atm_loss_factor = 10**(-zenit_atm_loss_db * (relative_air_mass-1) / 10) # atmospheric loss factor based on zenith atmospheric loss and relative air mass. Note: atmospheric loss increases as exp(-alpha * relative_air_mass), where alpha is the atmospheric loss coefficient in dB and relative_air_mass is the relative air mass. (Lambert-Beer law)
         
         rate_updated[i] = zenith_rate * FSPL_factor * atm_loss_factor 
