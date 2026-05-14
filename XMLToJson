@@ -1,37 +1,48 @@
 import xml.etree.ElementTree as ET
-import pprint
 import json
-
+import pprint
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 
 def convert_and_generate(xml_path, output_json_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
-
+    
     config_data = {
-        "Shells": [
-            {
-                "altitude": float(root.find('shell1/altitude').text),
-                "orbit_cycle": int(root.find('shell1/orbit_cycle').text),
-                "inclination": float(root.find('shell1/inclination').text),
-                "phase_shift": int(root.find('shell1/phase_shift').text),
-                "number_of_orbit": int(root.find('shell1/number_of_orbit').text),
-                "number_of_satellite_per_orbit": int(root.find('shell1/number_of_satellite_per_orbit').text)
-            }
-        ]
+        "Shells": [{
+            "altitude": float(root.find('shell1/altitude').text),
+            "orbit_cycle": int(root.find('shell1/orbit_cycle').text),
+            "inclination": float(root.find('shell1/inclination').text),
+            "phase_shift": int(root.find('shell1/phase_shift').text),
+            "number_of_orbit": int(root.find('shell1/number_of_orbit').text),
+            "number_of_satellite_per_orbit": int(root.find('shell1/number_of_satellite_per_orbit').text)
+        }]
     }
 
-    # Save a temporary config file
     temp_config = "config/temp_params.json"
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=4)
-        json_string = json.dumps(config_data, indent=4)
-        print(json_string)
-        
     constellation_information(temp_config)
+
+    generated_file = "data/constellation.json" # Adjust path if your StarPerf config differs
     
-    print(f"Detailed simulation data generated in output directory.")
+    try:
+        with open(generated_file, 'r') as f:
+            # Load into a dictionary
+            final_data = json.load(f)
+            
+            print("\n" + "="*50)
+            print(f"GENERATED DICTIONARY (File: {generated_file})")
+            print("="*50)
+        
+            pprint.pprint(final_data, depth=3)
+            
+            print("\n" + "="*50)
+            print("RAW JSON PREVIEW (First 500 characters)")
+            print("="*50)
+            print(json.dumps(final_data, indent=2)[:500] + "...")
+
+    except FileNotFoundError:
+        print(f"Error: Could not find the generated file at {generated_file}")
 
 if __name__ == "__main__":
-
     convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
