@@ -1,8 +1,15 @@
 import xml.etree.ElementTree as ET
 import json
 import pprint
+import h5py
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 
+def h5_to_json(h5_path, json_path):
+    with h5py.File(h5_path, 'r') as f:
+        data = {}
+        # You'll need to inspect the H5 structure first to map it correctly
+        with open(json_path, 'w') as jf:
+            json.dump(data, jf, indent=4)
 def convert_and_generate(xml_path, output_json_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -22,8 +29,6 @@ def convert_and_generate(xml_path, output_json_path):
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=4)
     constellation_information(temp_config)
-
-    generated_file = "data/constellation.json" # Adjust path if your StarPerf config differs
     
     try:
         with open(generated_file, 'r') as f:
@@ -46,3 +51,4 @@ def convert_and_generate(xml_path, output_json_path):
 
 if __name__ == "__main__":
     convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
+    h5_to_json("./data/Manual_constellation/temp_params.h5","output.json")
