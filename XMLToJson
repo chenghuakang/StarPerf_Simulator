@@ -7,6 +7,14 @@ from src.constellation_generation.by_manual.constellation_information import con
 
 def h5_to_dict(obj):
     d = {}
+    for attr_name, attr_value in obj.attrs.items():
+        if isinstance(attr_value, np.ndarray):
+            d[f"attr_{attr_name}"] = attr_value.tolist()
+        elif isinstance(attr_value, bytes):
+            d[f"attr_{attr_name}"] = attr_value.decode('utf-8')
+        else:
+            d[f"attr_{attr_name}"] = attr_value
+
     for key, item in obj.items():
         if isinstance(item, h5py.Group):
             d[key] = h5_to_dict(item)
