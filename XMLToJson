@@ -5,6 +5,11 @@ import h5py
 import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 
+with h5py.File("./data/Manual_constellation/temp_params.h5", 'r') as f:
+    def print_all(name):
+        print(name)
+    f.visit(print_all)
+
 def h5_to_dict(obj):
     d = {}
     for attr_name, attr_value in obj.attrs.items():
