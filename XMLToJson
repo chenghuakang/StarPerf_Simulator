@@ -1,31 +1,25 @@
-import xml.etree.ElementTree as ET
-import json
-from src.constellation_generation.by_manual.constellation_information import constellation_information
-
 def convert_and_generate(xml_path, output_json_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
-    
-    # Map XML to the intermediate JSON format StarPerf expects
+
     config_data = {
-        "number_of_shells": int(root.find('number_of_shells').text),
-        "shell1": {
-            "altitude": float(root.find('shell1/altitude').text),
-            "orbit_cycle": int(root.find('shell1/orbit_cycle').text),
-            "inclination": float(root.find('shell1/inclination').text),
-            "phase_shift": int(root.find('shell1/phase_shift').text),
-            "number_of_orbit": int(root.find('shell1/number_of_orbit').text),
-            "number_of_satellite_per_orbit": int(root.find('shell1/number_of_satellite_per_orbit').text)
-        }
+        "Shells": [
+            {
+                "altitude": float(root.find('shell1/altitude').text),
+                "orbit_cycle": int(root.find('shell1/orbit_cycle').text),
+                "inclination": float(root.find('shell1/inclination').text),
+                "phase_shift": int(root.find('shell1/phase_shift').text),
+                "number_of_orbit": int(root.find('shell1/number_of_orbit').text),
+                "number_of_satellite_per_orbit": int(root.find('shell1/number_of_satellite_per_orbit').text)
+            }
+        ]
     }
 
     # Save a temporary config file
     temp_config = "config/temp_params.json"
     with open(temp_config, 'w') as f:
-        json.dump(config_data, f)
+        json.dump(config_data, f, indent=4)
+        
     constellation_information(temp_config)
     
     print(f"Detailed simulation data generated in output directory.")
-
-if __name__ == "__main__":
-    convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
