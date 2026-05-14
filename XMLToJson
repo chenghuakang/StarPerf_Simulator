@@ -1,3 +1,9 @@
+import xml.etree.ElementTree as ET
+
+import json
+
+from src.constellation_generation.by_manual.constellation_information import constellation_information
+
 def convert_and_generate(xml_path, output_json_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
