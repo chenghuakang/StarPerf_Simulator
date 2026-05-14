@@ -34,11 +34,11 @@ def h5_to_json(h5_path, json_path):
             data = h5_to_dict(f)
             
         with open(json_path, 'w') as jf:
-            json.dump(data, jf, indent=4)
+            json.dump(data, jf, indent=10)
         print(f"Successfully converted {h5_path} to {json_path}")
         
         print("\nGenerated Dictionary Structure:")
-        pprint.pprint(data, depth=2)
+        pprint.pprint(data, depth=5)
         
     except Exception as e:
         print(f"Error during conversion: {e}")
@@ -60,7 +60,7 @@ def convert_and_generate(xml_path):
 
     temp_config = "config/temp_params.json"
     with open(temp_config, 'w') as f:
-        json.dump(config_data, f, indent=4)
+        json.dump(config_data, f, indent=10)
     
     constellation_information(temp_config)
 
