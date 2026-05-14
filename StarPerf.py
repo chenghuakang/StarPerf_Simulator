@@ -12,7 +12,7 @@ def main():
     print("Starting StarPerf...")
 
     import src.constellation_generation.by_manual.constellation_information as constellation_information
-    constellation_information.constellation_information("config/manual_constellation_generation_json_file/Example.json")
+    constellation_information.constellation_information("config/XML_constellation/Iridium.xml")
 
     print("Starting XML Constellations Testing...")
     # test the core module functionality of various XML constellations
