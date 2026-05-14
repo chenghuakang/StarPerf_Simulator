@@ -29,25 +29,6 @@ def convert_and_generate(xml_path, output_json_path):
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=4)
     constellation_information(temp_config)
-    
-    try:
-        with open(generated_file, 'r') as f:
-            # Load into a dictionary
-            final_data = json.load(f)
-            
-            print("\n" + "="*50)
-            print(f"GENERATED DICTIONARY (File: {generated_file})")
-            print("="*50)
-        
-            pprint.pprint(final_data, depth=3)
-            
-            print("\n" + "="*50)
-            print("RAW JSON PREVIEW (First 500 characters)")
-            print("="*50)
-            print(json.dumps(final_data, indent=2)[:500] + "...")
-
-    except FileNotFoundError:
-        print(f"Error: Could not find the generated file at {generated_file}")
 
 if __name__ == "__main__":
     convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
