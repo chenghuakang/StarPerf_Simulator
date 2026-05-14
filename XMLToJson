@@ -28,4 +28,4 @@ def convert_and_generate(xml_path, output_json_path):
     print(f"Detailed simulation data generated in output directory.")
 
 if __name__ == "__main__":
-    convert_and_generate("config/", "output_simulation.json")
+    convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
