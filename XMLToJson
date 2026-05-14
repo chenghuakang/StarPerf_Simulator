@@ -2,15 +2,40 @@ import xml.etree.ElementTree as ET
 import json
 import pprint
 import h5py
+import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 
+def h5_to_dict(obj):
+    d = {}
+    for key, item in obj.items():
+        if isinstance(item, h5py.Group):
+            d[key] = h5_to_dict(item)
+        elif isinstance(item, h5py.Dataset):
+            value = item[()]
+            if isinstance(value, np.ndarray):
+                d[key] = value.tolist()
+            elif isinstance(value, bytes):
+                d[key] = value.decode('utf-8')
+            else:
+                d[key] = value
+    return d
+
 def h5_to_json(h5_path, json_path):
-    with h5py.File(h5_path, 'r') as f:
-        data = {}
-        # You'll need to inspect the H5 structure first to map it correctly
+    try:
+        with h5py.File(h5_path, 'r') as f:
+            data = h5_to_dict(f)
+            
         with open(json_path, 'w') as jf:
             json.dump(data, jf, indent=4)
-def convert_and_generate(xml_path, output_json_path):
+        print(f"Successfully converted {h5_path} to {json_path}")
+        
+        print("\nGenerated Dictionary Structure:")
+        pprint.pprint(data, depth=2)
+        
+    except Exception as e:
+        print(f"Error during conversion: {e}")
+
+def convert_and_generate(xml_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
     
@@ -28,8 +53,9 @@ def convert_and_generate(xml_path, output_json_path):
     temp_config = "config/temp_params.json"
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=4)
+    
     constellation_information(temp_config)
 
 if __name__ == "__main__":
-    convert_and_generate("config/XML_constellation/Iridium.xml", "output_simulation.json")
-    h5_to_json("./data/Manual_constellation/temp_params.h5","output.json")
+    convert_and_generate("config/XML_constellation/Iridium.xml")
+    h5_to_json("./data/Manual_constellation/temp_params.h5", "output.json")
