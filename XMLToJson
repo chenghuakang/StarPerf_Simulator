@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-
+import pprint
 import json
 
 from src.constellation_generation.by_manual.constellation_information import constellation_information
@@ -25,6 +25,8 @@ def convert_and_generate(xml_path, output_json_path):
     temp_config = "config/temp_params.json"
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=4)
+        json_string = json.dumps(data_dict, indent=4)
+        print(json_string)
         
     constellation_information(temp_config)
     
