@@ -4,7 +4,8 @@ import pprint
 import h5py
 import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
-
+import src.constellation_generation.by_XML.orbit_configation as orbit_configication
+    
 with h5py.File("./data/Manual_constellation/temp_params.h5", 'r') as f:
     def print_all(name):
         print(name)
@@ -67,7 +68,7 @@ def convert_and_generate(xml_path):
     with open(temp_config, 'w') as f:
         json.dump(config_data, f, indent=10)
     
-    constellation_information(temp_config)
+    orbit_configication(temp_config)
 
 if __name__ == "__main__":
     convert_and_generate("config/XML_constellation/Iridium.xml")
