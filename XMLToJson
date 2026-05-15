@@ -46,7 +46,17 @@ def XML_to_json(name):
         print('\t\t\tThe shell contains ' , sh.number_of_orbits , ' orbits')
         print('\t\t\tshell orbital inclination(°) : ' , sh.inclination)
         print('\t\t\tshell orbital period (s) : ' , sh.orbit_cycle)
-        print('\t\t\t==============================================')
+      
+        shell_data = vars(s)
+        for key, value in shell_data.items():
+            if key != 'orbits':  
+                print(f"{key}: {value}")
+
+        for i, orb in enumerate(s.orbits):
+            print(f"orbit {i+1} attr:")
+            pprint(vars(orb))
+            print("-" * 20)
+         print('\t\t\t==============================================')
 
 
 def h5_to_dict(obj):
