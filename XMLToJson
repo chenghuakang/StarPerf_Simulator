@@ -56,7 +56,7 @@ def XML_to_json(name):
             print(f"orbit {i+1} attr:")
             pprint(vars(orb))
             print("-" * 20)
-            for j in orb:
+            for j in orb.satellites:
                 pprint(vars(j))
                 
 
