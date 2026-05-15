@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 import src.constellation_generation.by_XML.orbit_configuration as orbit_configuration
+import src.constellation_generation.by_XML.constellation_configuration as constellation_configuration
 
 def XML_to_json(name):
     constellation_name = name
