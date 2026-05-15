@@ -39,6 +39,7 @@ def XML_to_json(name):
     print('\t\t\tThere are ' , constellation.number_of_shells , ' shell(s) in this constellation')
     print('\t\t\tThe information for each shell is as follows:')
     for sh in constellation.shells:
+        print(vars(sh))
         print('\t\t\tshell name : ' , sh.shell_name)
         print('\t\t\tshell orbit altitude(km) : ' , sh.altitude)
         print('\t\t\tThe shell contains ' , sh.number_of_satellites , ' satellites')
