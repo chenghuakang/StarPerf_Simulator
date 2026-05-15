@@ -56,6 +56,9 @@ def XML_to_json(name):
             print(f"orbit {i+1} attr:")
             pprint(vars(orb))
             print("-" * 20)
+            for j in orb:
+                pprint(vars(j))
+                
 
 
 def h5_to_dict(obj):
