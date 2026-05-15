@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import json
-import pprint
+from pprint import pprint
 import h5py
 import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
