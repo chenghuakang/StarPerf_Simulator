@@ -5,11 +5,12 @@ import h5py
 import numpy as np
 from src.constellation_generation.by_manual.constellation_information import constellation_information
 import src.constellation_generation.by_XML.orbit_configuration as orbit_configuration
-    
-with h5py.File("./data/Manual_constellation/temp_params.h5", 'r') as f:
-    def print_all(name):
-        print(name)
-    f.visit(print_all)
+
+def XML_to_json(name):
+    constellation_name = name
+    constellation = constellation_configuration.constellation_configuration(dT=15,
+                                                                            constellation_name=constellation_name)
+
 
 def h5_to_dict(obj):
     d = {}
@@ -71,5 +72,4 @@ def convert_and_generate(xml_path):
     orbit_configuration(xml_path)
 
 if __name__ == "__main__":
-    convert_and_generate("config/XML_constellation/Iridium.xml")
-    h5_to_json("./data/Manual_constellation/temp_params.h5", "output.json")
+    XML_to_json("Iridium")
